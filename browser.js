@@ -186,7 +186,7 @@ async function loginToWebsite(config) {
   } = config;
 
   const browser = await puppeteer.launch({
-    headless: false, // Keep visible for debugging
+    headless: true, // Keep visible for debugging
     slowMo: 100, // Slow down operations for realism
     args: [
       '--start-maximized',
