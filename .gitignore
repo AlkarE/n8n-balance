@@ -1,0 +1,37 @@
+# Node.js dependencies
+node_modules/
+
+# Logs and debug files
+npm-debug.log*
+*.log
+logs/
+
+# Environment variables
+.env
+.env.*
+
+# Build artifacts
+dist/
+build/
+
+# IDE and editor specific files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Optional npm cache directory
+.npm/
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# Test coverage reports
+coverage/
+
+# Thumbnails and system files
+.DS_Store
+Thumbs.db
