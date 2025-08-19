@@ -6,6 +6,8 @@ const { loginToWebsite } = require('./browser');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const sleep = ms => new Promise(res => setTimeout(res, ms));
+
 // Middleware
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -30,8 +32,25 @@ app.post('/login', async (req, res) => {
     });
   }
 
-  // Run Puppeteer automation
-  const result = await loginToWebsite(inputData);
+  let attempt = 1;
+  let done = false;
+  let result;
+  let retries = 10;
+
+  while (!done) {
+    // console.log('attempt: ', attempt);
+
+    result = await loginToWebsite(inputData);
+    if (result.success) {
+      done = true;
+    }
+    attempt++;
+    if (attempt >= retries) {
+      done = true;
+    }
+    sleep(1500);
+  }
+
 
   // Return result to n8n
   return res.status(200).json(result);
