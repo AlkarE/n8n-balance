@@ -149,17 +149,6 @@ function solveMathCaptchaLocally(text) {
 }
 
 
-
-async function getBalance(sel) {
-  await page.waitForSelector(sel, { timeout: 5000 });
-  const balanceText = await page.evaluate(sel => {
-    const el = document.querySelector(sel);
-    return el ? el.innerText.trim() : '';
-  }, sel); // ← Pass 'selector' into the browser function
-
-  return balanceText;
-}
-
 /**
  * Main login function with optional CAPTCHA handling
  * @param {Object} config
@@ -177,6 +166,7 @@ async function loginToWebsite(config) {
     selectorBalance,
     dashboardUrl,
     captchaFormat = null,
+    selectorCheckLogin = null,
     captchaType,
     timeout = 30000,
     ajaxForm = false,
@@ -186,7 +176,7 @@ async function loginToWebsite(config) {
   } = config;
 
   const browser = await puppeteer.launch({
-    headless: true, // Keep visible for debugging
+    headless: false,
     slowMo: 100, // Slow down operations for realism
     args: [
       '--start-maximized',
@@ -226,7 +216,7 @@ async function loginToWebsite(config) {
 
   const page = await browser.newPage();
 
-  await page.setViewport({ width: 1200, height: 800 });
+  await page.setViewport({ width: 1600, height: 900, isMobile: false, hasHouch: false, deviceScaleFactor: 1 });
   await page.setExtraHTTPHeaders({
     'Accept-Language': 'en-US,en;q=0.9',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -252,11 +242,12 @@ async function loginToWebsite(config) {
     Object.defineProperty(navigator, 'languages', { get: () => ['ru-RU', 'ru', 'en-US', 'en'] });
   });
 
+
   try {
     console.log(`🚀 Navigating to ${url}...`);
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 80000 });
 
-    await page.setViewport({ width: 1366, height: 768 });
+    await page.setViewport({ width: 1600, height: 900 });
 
     // Fill login fields
     console.log('🔐 Filling login form...');
@@ -264,8 +255,9 @@ async function loginToWebsite(config) {
     await page.type(selectorUsername, username, { delay: 100 });
     sleep(500);
 
-    if (selectorLoginInput) {
-      await page.click(selectorLoginInput);
+    if (selectorCheckLogin) {
+      console.log('Found check login button');
+      await page.click(selectorCheckLogin);
     }
 
     await page.waitForSelector(selectorPassword, { timeout: 5000 });
@@ -273,6 +265,8 @@ async function loginToWebsite(config) {
     sleep(500);
 
     let captchaAnswer = null;
+
+
 
     // ———————————————————————————————
     // 🧩 CAPTCHA Detection & Solving
@@ -382,7 +376,8 @@ async function loginToWebsite(config) {
       //     console.error('Form not found');
       //   }
       // });
-      await page.waitForSelector(selectorPassword, { timeout: 5000 });
+      // await page.waitForSelector(selectorPassword, { timeout: 5000 });
+
 
     } else {
 
@@ -399,6 +394,21 @@ async function loginToWebsite(config) {
       await page.click(selectorContract);
     }
 
+    if (config.name == 'mcn') {
+      await page.waitForSelector('.topbar-menu-accounts .accounts__title_caret');
+      await page.click('.topbar-menu-accounts .accounts__title_caret');
+      sleep(100);
+
+      await page.click('.accounts-contragent__contracts.accounts-contragent__contracts-expanded .account-contract:nth-child(1)');
+      sleep(100);
+
+
+      await Promise.all([
+        page.waitForNavigation({ timeout: 20000, waitUntil: 'domcontentloaded' }),
+        await page.click('.accounts-contragent__contracts.accounts-contragent__contracts-expanded .account-contract:nth-child(1) .accounts-list__accounts'),
+      ]);
+      await page.waitForSelector(selectorBalance, { timeout: 10000 });
+    }
 
 
     console.log('✅ Login successful! Page title:', await page.title());
@@ -414,9 +424,10 @@ async function loginToWebsite(config) {
     console.log('✅ balance:', balanceText);
 
 
+
     // Keep open for inspection
     console.log('👀 Browser will stay open for 1 seconds...');
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    sleep(1000)
 
     return {
       success: true,
@@ -429,9 +440,7 @@ async function loginToWebsite(config) {
     };
   } catch (error) {
     console.error('❌ Login failed:', error.message);
-    if (browser) {
-      await browser.close().catch(() => { });
-    }
+
     return {
       success: false,
       message: 'Login failed',
@@ -502,9 +511,6 @@ const sites = [
     password: 'km1234mk',
     selectorUsername: 'form input[name="username"]',
     selectorPassword: 'form input[name="password"]',
-    // selectorCaptchaQuestion: '.auth-form .captcha-block-image img',
-    // selectorCaptchaQuestion: 'img#captcha-image', // Or image
-    // selectorCaptchaInput: '.auth-form .captcha-block-image input[name="captcha"]',
     selectorSubmit: 'form button[type="Submit"]',
     dashboardUrl: 'https://b2blk.megafon.ru/soho/subscribers',
     selectorBalance: '.Menu_Wrapper h5.MuiTypography-h5'
@@ -571,23 +577,38 @@ const sites = [
   },
   {
     name: 'mcn',
-    url: 'https://base.mcn.ru/auth/login',
+    url: 'https://base.mcn.ru/',
     username: 'buh@avg.su',
     password: 'auGz9o2Y',
     selectorUsername: '.mcn-login input[name="login"]',
     selectorPassword: '.mcn-login input[name="password"]',
-    // selectorCaptchaQuestion: '.auth-form .captcha-block-image img',
-    // selectorCaptchaQuestion: 'img#captcha-image', // Or image
-    // selectorCaptchaInput: '.auth-form .captcha-block-image input[name="captcha"]',
-    selectorSubmit: '.mcn-login button[type="button"]',
-    // dashboardUrl: 'https://cp.vdsina.com/vds/list',
-    selectorBalance: '.w5-client-balance .info-box-balance-value > span'
+    ajaxForm: true,
+    selectorCheckLogin: '.mcn-login .check-login__btn button',
+    selectorSubmit: '.mcn-login .check-password__btn button[type="button"]',
+    selectorBalance: '.accounts__balance_money-working',
   },
 ];
 
 // Run login
 module.exports = { loginToWebsite };
 
-// loginToWebsite(config)
-//   .then(() => console.log('🎉 Login script completed.'))
-//   .catch(err => console.error('💥 Script failed:', err));
+// async function getBalance(data) {
+//   let done = false;
+
+//   let attempt = 1;
+//   while (!done) {
+//     console.log('attempt: ', attempt);
+
+//     const res = await loginToWebsite(data)
+//     console.log(res)
+//     if (res.success) {
+//       done = true;
+//     }
+//     sleep(1500);
+//     attempt++;
+//   }
+
+// }
+// getBalance(config)
+// .then((res) => console.log(res))
+// .catch(err => console.error('💥 Script failed:', err));
